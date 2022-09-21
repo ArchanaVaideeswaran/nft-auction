@@ -1,11 +1,14 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts//interfaces/IERC165.sol";
 
-
-contract Auction {
+contract Auction is ERC721Holder {
+    
     // Type Declarations
-
     struct Listing {
         address payable seller;
         uint startingPrice;
@@ -21,9 +24,10 @@ contract Auction {
     // State Variables
     uint _listingId;
     mapping(address => mapping(uint => Listing)) _listings;
-    mapping(uint => mapping(address => uint)) _bids;
+    mapping(address => mapping(uint => mapping(address => uint))) _bids;
 
     // Events
+    event AuctionCreated(address indexed nft, uint tokenId, address indexed seller);
 
     // Modifiers
 
@@ -32,9 +36,8 @@ contract Auction {
     // External Functions
 
     function createAuction(
-        address tokenContract,
+        address nft,
         uint tokenId,
-        address seller,
         uint startingPrice,
         address paymentToken,
         uint32 startTime,
@@ -42,7 +45,46 @@ contract Auction {
         uint32 timeBuffer,
         uint96 ticSize
     ) external {
+        require(
+            IERC165(nft).supportsInterface(type(IERC721).interfaceId),
+            "Token contract does not support IERC721"
+        );
+        address owner = IERC721(nft).ownerOf(tokenId);
+        require(
+            msg.sender == owner || 
+            IERC721(nft).isApprovedForAll(owner, msg.sender),
+            "Caller is not owner or operator"
+        );
+        require(startingPrice > 0, "Starting price too small");
+        require(
+            startTime >= uint32(block.timestamp) || startTime == 0,
+            "Start time should be greater than or equal to block timestamp"
+        );
+        require(duration > 0, "Duration too small");
+        require(timeBuffer < duration, "Time buffer too large");
+        require(ticSize > 0, "Tic size too small");
         
+        if(startTime == 0) {
+            startTime = uint32(block.timestamp);
+        }
+
+        Listing storage item = _listings[nft][tokenId];
+
+        item.seller = payable(msg.sender);
+        item.startingPrice = startingPrice;
+        item.paymentToken = paymentToken;
+        item.startTime = startTime;
+        item.duration = duration;
+        item.timeBuffer = timeBuffer;
+        item.ticSize = ticSize;
+
+        IERC721(nft).safeTransferFrom(
+            msg.sender,
+            address(this),
+            tokenId
+        );
+
+        emit AuctionCreated(nft, tokenId, msg.sender);
     }
 
     function bid(uint listingId, uint amount) external {}
