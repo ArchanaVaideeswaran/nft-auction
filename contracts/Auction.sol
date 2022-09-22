@@ -46,6 +46,12 @@ contract Auction is ERC721Holder {
         uint amount,
         bool extended
     );
+    event BidClaimed(
+        address indexed nft,
+        uint tokenId,
+        address indexed bidder,
+        uint amount
+    );
 
     // Modifiers
 
