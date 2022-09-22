@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts//interfaces/IERC165.sol";
 
 contract Auction is ERC721Holder {
@@ -21,17 +22,36 @@ contract Auction is ERC721Holder {
         uint96 ticSize;
     }
 
+    struct Bid {
+        address payable bidder;
+        uint amount;
+        address paymentToken;
+    }
+
     // State Variables
     uint _listingId;
     mapping(address => mapping(uint => Listing)) _listings;
-    mapping(address => mapping(uint => mapping(address => uint))) _bids;
+    mapping(address => mapping(uint => mapping(address => Bid))) _bids;
 
     // Events
-    event AuctionCreated(address indexed nft, uint tokenId, address indexed seller);
+    event AuctionCreated(
+        address indexed nft,
+        uint tokenId,
+        address indexed seller
+    );
+    event BidPlaced(
+        address indexed nft,
+        uint tokenId,
+        address indexed bidder,
+        uint amount,
+        bool extended
+    );
 
     // Modifiers
 
     // Constructor
+
+    receive() external payable {}
 
     // External Functions
 
@@ -56,6 +76,11 @@ contract Auction is ERC721Holder {
             "Caller is not owner or operator"
         );
         require(startingPrice > 0, "Starting price too small");
+        require(
+            paymentToken == address(0) ||
+            IERC165(paymentToken).supportsInterface(type(IERC20).interfaceId),
+            "Payment token is neither zero (ETH) nor supports interface IERC20"
+        );
         require(
             startTime >= uint32(block.timestamp) || startTime == 0,
             "Start time should be greater than or equal to block timestamp"
@@ -87,15 +112,102 @@ contract Auction is ERC721Holder {
         emit AuctionCreated(nft, tokenId, msg.sender);
     }
 
-    function bid(uint listingId, uint amount) external {}
+    function bid(address nft, uint tokenId, uint amount) external {
+        Listing storage item = _listings[nft][tokenId];
+        uint32 blockTimeStamp = uint32(block.timestamp);
 
-    function bidEth(uint listingId) external payable {}
+        require(item.seller != address(0), "Auction item does not exists");
+        require(
+            amount >= (item.highestBid + item.ticSize),
+            "Minimum tic size not met"
+        );
+        require(
+            item.startTime <= blockTimeStamp,
+            "Auction not started"
+        );
+        require(
+            blockTimeStamp < (item.startTime + item.duration),
+            "Auction ended"
+        );
+        require(
+            item.paymentToken != address(0),
+            "Payment token is not ERC20"
+        );
 
-    function settleAuction(uint listingId) external {}
+        Bid storage _bid = _bids[nft][tokenId][msg.sender];
 
-    function closeAuction(uint listingId) external {} 
+        _bid.bidder = payable(msg.sender);
+        _bid.amount += amount;
+        _bid.paymentToken = item.paymentToken;
 
-    function claimBid(uint listingId) external {}
+        item.highestBid = amount;
+        item.highestBidder = payable(msg.sender);
+
+        bool extended;
+        uint32 timeRemaining = blockTimeStamp - item.startTime;
+
+        if(timeRemaining <= item.timeBuffer) {
+            item.duration += (item.timeBuffer - timeRemaining);
+            extended = true;
+        }
+
+        IERC20(item.paymentToken).transferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+
+        emit BidPlaced(nft, tokenId, _bid.bidder, amount, extended);
+    }
+
+    function bidEth(address nft, uint tokenId) external payable {
+        uint amount = msg.value;
+        Listing storage item = _listings[nft][tokenId];
+        uint32 blockTimeStamp = uint32(block.timestamp);
+
+        require(item.seller != address(0), "Auction item does not exists");
+        require(
+            amount >= (item.highestBid + item.ticSize),
+            "Minimum tic size not met"
+        );
+        require(
+            item.startTime <= blockTimeStamp,
+            "Auction not started"
+        );
+        require(
+            blockTimeStamp < (item.startTime + item.duration),
+            "Auction ended"
+        );
+        require(
+            item.paymentToken == address(0),
+            "Payment token is not ETH"
+        );
+
+        Bid storage _bid = _bids[nft][tokenId][msg.sender];
+
+        _bid.bidder = payable(msg.sender);
+        _bid.amount += amount;
+        _bid.paymentToken = item.paymentToken;
+
+        item.highestBid = amount;
+        item.highestBidder = payable(msg.sender);
+
+        bool extended;
+        uint32 timeRemaining = blockTimeStamp - item.startTime;
+
+        if(timeRemaining <= item.timeBuffer) {
+            item.duration += (item.timeBuffer - timeRemaining);
+            extended = true;
+        }
+
+        emit BidPlaced(nft, tokenId, _bid.bidder, amount, extended);
+    }
+
+    function settleAuction(address nft, uint tokenId) external {}
+
+    function cancelAuction(address nft, uint tokenId) external {} 
+
+    function claimBid(address nft, uint tokenId) external {}
 
     // Public Functions
 
