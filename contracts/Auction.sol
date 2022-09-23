@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts//interfaces/IERC165.sol";
+import "@openzeppelin/contracts/interfaces/IERC165.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Auction is ERC721Holder {
+contract Auction is ERC721Holder, ReentrancyGuard {
     
     // Type Declarations
     struct Listing {
@@ -70,10 +71,10 @@ contract Auction is ERC721Holder {
         uint32 duration,
         uint32 timeBuffer,
         uint96 ticSize
-    ) external {
+    ) external nonReentrant {
         require(
             IERC165(nft).supportsInterface(type(IERC721).interfaceId),
-            "Token contract does not support IERC721"
+            "Token contract does not support interface IERC721"
         );
         address owner = IERC721(nft).ownerOf(tokenId);
         require(
@@ -118,7 +119,7 @@ contract Auction is ERC721Holder {
         emit AuctionCreated(nft, tokenId, msg.sender);
     }
 
-    function bid(address nft, uint tokenId, uint amount) external {
+    function bid(address nft, uint tokenId, uint amount) external nonReentrant {
         Listing storage item = _listings[nft][tokenId];
         uint32 blockTimeStamp = uint32(block.timestamp);
 
@@ -166,7 +167,7 @@ contract Auction is ERC721Holder {
         emit BidPlaced(nft, tokenId, _bid.bidder, amount, extended);
     }
 
-    function bidEth(address nft, uint tokenId) external payable {
+    function bidEth(address nft, uint tokenId) external payable nonReentrant {
         uint amount = msg.value;
         Listing storage item = _listings[nft][tokenId];
         uint32 blockTimeStamp = uint32(block.timestamp);
@@ -213,7 +214,7 @@ contract Auction is ERC721Holder {
 
     function cancelAuction(address nft, uint tokenId) external {} 
 
-    function claimBid(address nft, uint tokenId) external {
+    function claimBid(address nft, uint tokenId) external nonReentrant {
         Listing memory item = _listings[nft][tokenId];
         Bid memory _bid = _bids[nft][tokenId][msg.sender];
 
@@ -222,6 +223,8 @@ contract Auction is ERC721Holder {
             item.highestBidder != msg.sender,
             "Highest bidder cannot claim bid"
         );
+
+        delete _bids[nft][tokenId][msg.sender];
 
         if(_bid.paymentToken != address(0)) {
             IERC20(_bid.paymentToken).transferFrom(
@@ -233,8 +236,6 @@ contract Auction is ERC721Holder {
             (bool succes, ) = payable(_bid.bidder).call{value: _bid.amount}("");
             require(succes, "ETH transfer failed");
         }
-
-        delete _bids[nft][tokenId][msg.sender];
 
         emit BidClaimed(nft, tokenId, _bid.bidder, _bid.amount);
     }
