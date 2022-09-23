@@ -213,7 +213,31 @@ contract Auction is ERC721Holder {
 
     function cancelAuction(address nft, uint tokenId) external {} 
 
-    function claimBid(address nft, uint tokenId) external {}
+    function claimBid(address nft, uint tokenId) external {
+        Listing memory item = _listings[nft][tokenId];
+        Bid memory _bid = _bids[nft][tokenId][msg.sender];
+
+        require(_bid.amount > 0, "No active bids");
+        require(
+            item.highestBidder != msg.sender,
+            "Highest bidder cannot claim bid"
+        );
+
+        if(_bid.paymentToken != address(0)) {
+            IERC20(_bid.paymentToken).transferFrom(
+                address(this),
+                _bid.bidder,
+                _bid.amount
+            );
+        } else {
+            (bool succes, ) = payable(_bid.bidder).call{value: _bid.amount}("");
+            require(succes, "ETH transfer failed");
+        }
+
+        delete _bids[nft][tokenId][msg.sender];
+
+        emit BidClaimed(nft, tokenId, _bid.bidder, _bid.amount);
+    }
 
     // Public Functions
 
