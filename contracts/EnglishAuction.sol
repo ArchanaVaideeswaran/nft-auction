@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Auction is ERC721Holder, ReentrancyGuard {
+contract EnglishAuction is ERC721Holder, ReentrancyGuard {
     struct Listing {
         address payable seller;
         uint startingPrice;
@@ -87,7 +87,7 @@ contract Auction is ERC721Holder, ReentrancyGuard {
         );
         require(
             startTime >= uint32(block.timestamp) || startTime == 0,
-            "Start time should be greater than or equal to block timestamp"
+            "Start time must be >= block timestamp"
         );
         require(duration > 0, "Duration too small");
         require(timeBuffer < duration, "Time buffer too large");
@@ -236,7 +236,7 @@ contract Auction is ERC721Holder, ReentrancyGuard {
 
         if(_bid.paymentToken != address(0)) {
             IERC20(_bid.paymentToken).transferFrom(
-                _bid.bidder,
+                address(this),
                 item.seller,
                 _bid.amount
             );
