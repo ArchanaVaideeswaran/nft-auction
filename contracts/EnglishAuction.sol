@@ -213,7 +213,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         emit BidPlaced(nft, tokenId, _bid.bidder, amount, extended);
     }
 
-    function settleAuction(address nft, uint tokenId) external {
+    function settleAuction(address nft, uint tokenId) external nonReentrant {
         Listing memory item = getListing(nft, tokenId);
         Bid memory _bid = getBid(nft, tokenId, msg.sender);
         uint32 blockTimeStamp = uint32(block.timestamp);
@@ -248,7 +248,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         emit AuctionSettled(nft, tokenId, item.seller, _bid.bidder, _bid.amount);
     }
 
-    function cancelAuction(address nft, uint tokenId) external {
+    function cancelAuction(address nft, uint tokenId) external nonReentrant {
         Listing memory item = getListing(nft, tokenId);
 
         require(item.seller != address(0), "Auction item does not exists");
