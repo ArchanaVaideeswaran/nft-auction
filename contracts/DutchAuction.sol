@@ -2,13 +2,15 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract DutchAuction is ERC721Holder, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     struct Listing {
         address payable seller;
         uint startPrice;
@@ -74,11 +76,7 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         item.duration = duration;
         item.paymentToken = paymentToken;
 
-        IERC721(nft).safeTransferFrom(
-            msg.sender,
-            address(this),
-            tokenId
-        );
+        _handleNftTransfer(nft, tokenId, msg.sender, address(this));
 
         emit AuctionCreated(nft, tokenId, msg.sender);
     }
@@ -87,63 +85,15 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         address nft,
         uint tokenId,
         uint amount
-    ) external nonReentrant {
-        Listing memory item = getListing(nft, tokenId);
-
-        require(item.seller != address(0), "Auction item does not exist");
-        require(uint32(block.timestamp) >= item.startTime, "Auction not started");
-        require(
-            uint32(block.timestamp) < (item.startTime + item.duration),
-            "Auction ended"
-        );
-        require(
-            item.paymentToken != address(0),
-            "Payment token is not ERC20"
-        );
-
-        uint elapsedTime = uint(uint32(block.timestamp) - item.startTime);
-        uint currentPrice = getCurrentPrice(
-            elapsedTime,
-            item.duration,
-            item.startPrice,
-            item.endPrice
-        );
-
-        require(amount >= currentPrice, "Price too small");
-
-        delete _listings[nft][tokenId];
-
-        IERC721(nft).safeTransferFrom(
-            address(this),
-            msg.sender,
-            tokenId
-        );
-
-        IERC20(item.paymentToken).transferFrom(
-            msg.sender,
-            item.seller,
-            amount
-        );
-
-        emit AuctionSold(nft, tokenId, item.seller, msg.sender, amount);
-    }
-
-    function buyAuctionItemEth(
-        address nft,
-        uint tokenId
     ) external payable nonReentrant {
         Listing memory item = getListing(nft, tokenId);
-        uint amount = msg.value;
 
         require(item.seller != address(0), "Auction item does not exist");
+        require(msg.sender != item.seller, "Caller cannot be seller");
         require(uint32(block.timestamp) >= item.startTime, "Auction not started");
         require(
             uint32(block.timestamp) < (item.startTime + item.duration),
             "Auction ended"
-        );
-        require(
-            item.paymentToken == address(0),
-            "Payment token is not ETH"
         );
 
         uint elapsedTime = uint(uint32(block.timestamp) - item.startTime);
@@ -154,18 +104,16 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
             item.endPrice
         );
 
+        if(item.paymentToken == address(0)) {
+            amount = msg.value;
+        }
         require(amount >= currentPrice, "Price too small");
 
         delete _listings[nft][tokenId];
 
-        IERC721(nft).safeTransferFrom(
-            address(this),
-            msg.sender,
-            tokenId
-        );
+        _handleNftTransfer(nft, tokenId, address(this), msg.sender);
 
-        (bool succes, ) = payable(item.seller).call{value: amount}("");
-        require(succes, "ETH transfer failed");
+        _handlePayment(item.paymentToken, msg.sender, item.seller, amount);
 
         emit AuctionSold(nft, tokenId, item.seller, msg.sender, amount);
     }
@@ -184,5 +132,28 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         uint tokenId
     ) public view returns (Listing memory) {
         return _listings[nft][tokenId];
+    }
+
+    function _handlePayment(
+        address token,
+        address from,
+        address to,
+        uint amount
+    ) internal {
+        if(token != address(0)) {
+            IERC20(token).safeTransferFrom(from, to, amount);
+        } else if(to != address(this)) {
+            (bool success, ) = payable(to).call{value: amount}("");
+            require(success, "ETH transfer failed");
+        }
+    }
+
+    function _handleNftTransfer(
+        address token,
+        uint tokenId,
+        address from,
+        address to
+    ) internal {
+        IERC721(token).safeTransferFrom(from, to, tokenId);
     }
 }
