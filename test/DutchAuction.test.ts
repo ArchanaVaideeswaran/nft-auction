@@ -22,7 +22,7 @@ describe("Dutch Auction", () => {
     let auction: DutchAuction;
     let nft: Avengers;
     let dummy: Dummy;
-    let minAuctionLengthInSeconds = 15 * 60;
+    let MIN_AUCTION_LENGTH_IN_SECONDS = 15 * 60;
 
     before(async () => {
         [owner, user1, user2, ...users] = await ethers.getSigners();
@@ -33,7 +33,7 @@ describe("Dutch Auction", () => {
 
         let Auction = await ethers.getContractFactory("DutchAuction");
         let WETH = weth.address;
-        auction = await Auction.deploy(WETH, minAuctionLengthInSeconds);
+        auction = await Auction.deploy(WETH, MIN_AUCTION_LENGTH_IN_SECONDS);
         await auction.deployed();
 
         let Nft = await ethers.getContractFactory("Avengers");
@@ -48,7 +48,7 @@ describe("Dutch Auction", () => {
         await dummy.deployed();
     });
 
-    describe("Function: create auction", () => {
+    describe("Function create auction", () => {
         // function parameters
         let token;
         let tokenId;
@@ -65,7 +65,7 @@ describe("Dutch Auction", () => {
             endPrice = toWei("2");
             startTime = await time.latest();
             startTime += 5 * 60; // auction starts in 5 minutes from the previous block.
-            duration = minAuctionLengthInSeconds;
+            duration = MIN_AUCTION_LENGTH_IN_SECONDS;
             paymentToken = weth.address;
 
             await expect(auction.createAuction(
@@ -173,7 +173,7 @@ describe("Dutch Auction", () => {
             endPrice = toWei("2");
             startTime = await time.latest();
             startTime += 5 * 60; // auction starts in 5 minutes from the previous block.
-            duration = minAuctionLengthInSeconds;
+            duration = MIN_AUCTION_LENGTH_IN_SECONDS;
             paymentToken = weth.address;
 
             await nft.approve(auction.address, 1);
@@ -188,5 +188,97 @@ describe("Dutch Auction", () => {
                 paymentToken
             )).to.changeTokenBalances(nft, [owner, auction], [-1, 1]);
         })
+    });
+
+    describe("Function buy auction item", () => {
+        // function parameters
+        let token;
+        let tokenId;
+        let amount;
+        let startTime;
+
+        it("should validate input params",async () => {
+            token = nft.address;
+            tokenId = 1;
+            amount = toWei("2");
+
+            startTime = (await auction.getListing(token, tokenId)).startTime;
+
+            await expect(auction.buyAuctionItem(
+                token,
+                2, // token Id 2 is not on auction
+                amount
+            )).to.be.rejectedWith(
+                "Auction item does not exist"
+            );
+
+            // caller "owner" is auction item seller
+            await expect(auction.buyAuctionItem(
+                token,
+                tokenId,
+                amount
+            )).to.be.rejectedWith(
+                "Caller cannot be seller"
+            );
+
+            // auction has not started yet
+            await expect(auction.connect(user1).buyAuctionItem(
+                token,
+                tokenId,
+                amount
+            )).to.be.rejectedWith(
+                "Auction not started"
+            );
+
+            const FIVE_MINS_IN_SECONDS = 5 * 60;
+            let increase = (
+                startTime
+                + FIVE_MINS_IN_SECONDS
+            );
+            await time.increaseTo(increase);
+
+            await expect(auction.connect(user1).buyAuctionItem(
+                token,
+                tokenId,
+                amount // amount too small at the given time
+            )).to.be.rejectedWith(
+                "Cannot execute bid"
+            );
+
+            increase += MIN_AUCTION_LENGTH_IN_SECONDS;
+            await time.increaseTo(increase);
+
+            // auction ended at the given time
+            await expect(auction.connect(user1).buyAuctionItem(
+                token,
+                tokenId,
+                amount
+            )).to.be.rejectedWith(
+                "Auction ended"
+            );
+        });
+
+        it("should buy auction item on valid input", async () => {
+            token = nft.address;
+            tokenId = 1;
+            amount = toWei("8");
+
+            startTime = (await auction.getListing(token, tokenId)).startTime;
+            const FIVE_MINS_IN_SECONDS = 5 * 60;
+            let increase = (
+                startTime
+                + FIVE_MINS_IN_SECONDS
+            );
+            await time.increaseTo(increase);
+
+            await weth.connect(user1).deposit({value: amount});
+            await weth.connect(user1).approve(auction.address, amount);
+
+            await expect(auction.connect(user1).buyAuctionItem(
+                token,
+                tokenId,
+                amount
+            )).to.changeTokenBalances(nft, [auction, user1], [-1, 1]);
+        });
     });
 });
