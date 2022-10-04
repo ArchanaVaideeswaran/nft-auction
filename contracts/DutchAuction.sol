@@ -3,13 +3,11 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interfaces/IWETH.sol";
 
 contract DutchAuction is ERC721Holder, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     struct Listing {
         address seller;
@@ -22,6 +20,7 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
 
     uint public _minimumAuctionLengthInSeconds;
     address public owner;
+    address public WETH;
     mapping(address => mapping(uint => Listing)) private _listings;
 
     event AuctionCreated(
@@ -43,8 +42,9 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
     );
     event UpdatedMinAuctionLength(uint lengthInSeconds);
 
-    constructor(uint minimumAuctionLengthInSeconds) {
+    constructor(address weth, uint minimumAuctionLengthInSeconds) {
         owner = msg.sender;
+        WETH = weth;
         setMinimumAuctionLength(minimumAuctionLengthInSeconds);
     }
 
@@ -75,9 +75,8 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         require(startPrice > 0, "Starting price too small");
         require(endPrice < startPrice, "End price must be < start price");
         require(
-            paymentToken == address(0) ||
-            IERC165(paymentToken).supportsInterface(type(IERC20).interfaceId),
-            "Payment token is neither zero (ETH) nor supports interface IERC20"
+            paymentToken == WETH,
+            "Payment token is not WETH"
         );
         require(
             startTime >= uint32(block.timestamp),
@@ -106,15 +105,11 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         address nft,
         uint tokenId,
         uint amount
-    ) external payable nonReentrant {
+    ) external nonReentrant {
         Listing memory item = getListing(nft, tokenId);
 
         require(item.seller != address(0), "Auction item does not exist");
         require(msg.sender != item.seller, "Caller cannot be seller");
-
-        if(item.paymentToken == address(0)) {
-            amount = msg.value;
-        }
 
         bool isExecutable = canExecuteBid(item, amount);        
         require(isExecutable, "Cannot execute bid");
@@ -164,12 +159,7 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         address to,
         uint amount
     ) internal {
-        if(token != address(0)) {
-            IERC20(token).safeTransferFrom(from, to, amount);
-        } else {
-            (bool success, ) = payable(to).call{value: amount}("");
-            require(success, "ETH transfer failed");
-        }
+        IWETH(token).transferFrom(from, to, amount);
     }
 
     function _handleNftTransfer(
