@@ -49,7 +49,7 @@ describe("Dutch Auction", () => {
         await dummy.deployed();
     });
 
-    xdescribe("Function create auction", () => {
+    describe("Function create auction", () => {
         // function parameters
         let token;
         let tokenId;
@@ -190,7 +190,7 @@ describe("Dutch Auction", () => {
         })
     });
 
-    xdescribe("Function buy auction item", () => {
+    describe("Function buy auction item", () => {
         // function parameters
         let token;
         let tokenId;
@@ -258,7 +258,7 @@ describe("Dutch Auction", () => {
             );
         });
 
-        it("should buy auction item on valid input", async () => {
+        xit("should buy auction item on valid input", async () => {
             token = nft.address;
             tokenId = 1;
             amount = toWei("8");
