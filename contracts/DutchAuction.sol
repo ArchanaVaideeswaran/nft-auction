@@ -48,11 +48,6 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         setMinimumAuctionLength(minimumAuctionLengthInSeconds);
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Caller not owner");
-        _;
-    }
-
     function createAuction(
         address nft,
         uint tokenId,
@@ -111,8 +106,8 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         require(item.seller != address(0), "Auction item does not exist");
         require(msg.sender != item.seller, "Caller cannot be seller");
 
-        bool isExecutable = canExecuteBid(item, amount);        
-        require(isExecutable, "Cannot execute bid");
+        uint currentAuctionPrice = getCurrentPrice(nft, tokenId);        
+        require(amount >= currentAuctionPrice, "Cannot execute bid");
 
         delete _listings[nft][tokenId];
 
@@ -136,7 +131,8 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         emit AuctionCancelled(nft, tokenId, item.seller);
     }
 
-    function setMinimumAuctionLength(uint minimumAuctionLengthInSeconds) public onlyOwner {
+    function setMinimumAuctionLength(uint minimumAuctionLengthInSeconds) public {
+        require(msg.sender == owner, "Caller not owner");
         require(
             minimumAuctionLengthInSeconds >= 15 minutes,
             "Auction length must be > 15 minutes"
@@ -151,6 +147,28 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         uint tokenId
     ) public view returns (Listing memory) {
         return _listings[nft][tokenId];
+    }
+
+    function getCurrentPrice(
+        address nft,
+        uint tokenId
+    ) public view returns (uint) {
+        Listing memory item = getListing(nft, tokenId);
+
+        uint startTime = item.startTime;
+        uint endTime = uint(item.startTime + item.duration);
+        uint blockTimestamp = block.timestamp;
+
+        require(startTime <= blockTimestamp, "Auction not started");
+        require(endTime >= blockTimestamp, "Auction ended");
+
+        uint currentAuctionPrice = item.startPrice - (
+            ((item.startPrice - item.endPrice) * (blockTimestamp - startTime)) 
+            / 
+            (endTime - startTime)
+        );
+
+        return currentAuctionPrice;
     }
 
     function _handlePayment(
@@ -169,25 +187,5 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         address to
     ) internal {
         IERC721(token).safeTransferFrom(from, to, tokenId);
-    }
-
-    function canExecuteBid(
-        Listing memory item,
-        uint amount
-    ) private view returns (bool) {
-        uint startTime = item.startTime;
-        uint endTime = uint(item.startTime + item.duration);
-        uint blockTimestamp = block.timestamp;
-
-        require(startTime <= blockTimestamp, "Auction not started");
-        require(endTime >= blockTimestamp, "Auction ended");
-
-        uint currentAuctionPrice = item.startPrice - (
-            ((item.startPrice - item.endPrice) * (blockTimestamp - startTime)) 
-            / 
-            (endTime - startTime)
-        );
-
-        return (amount >= currentAuctionPrice);
     }
 }

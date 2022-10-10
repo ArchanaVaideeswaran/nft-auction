@@ -1,8 +1,7 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect, use } from "chai";
+import { expect } from "chai";
 import { ethers } from "hardhat";
-import { it } from "mocha";
 import { Avengers, Dummy, DutchAuction, WETH } from "../typechain-types";
 
 function toWei(value: string) {
@@ -187,7 +186,7 @@ describe("Dutch Auction", () => {
                 duration,
                 paymentToken
             )).to.changeTokenBalances(nft, [owner, auction], [-1, 1]);
-        })
+        });
     });
 
     describe("Function buy auction item", () => {
@@ -258,7 +257,7 @@ describe("Dutch Auction", () => {
             );
         });
 
-        xit("should buy auction item on valid input", async () => {
+        it("should buy auction item on valid input", async () => {
             token = nft.address;
             tokenId = 1;
             amount = toWei("8");
