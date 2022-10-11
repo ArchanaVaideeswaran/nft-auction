@@ -25,7 +25,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         address paymentToken;
     }
 
-    address public WETH;
+    address public weth;
     mapping(address => mapping(uint => Listing)) private _listings;
     mapping(address => mapping(uint => mapping(address => Bid))) private _bids;
 
@@ -60,8 +60,8 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         address indexed seller
     );
 
-    constructor(address weth) {
-        WETH = weth;
+    constructor(address _weth) {
+        weth = _weth;
     }
 
     function createAuction(
@@ -76,7 +76,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
     ) external nonReentrant {
         require(
             IERC165(nft).supportsInterface(type(IERC721).interfaceId),
-            "Token contract does not support interface IERC721"
+            "IERC721 not supported"
         );
         address owner = IERC721(nft).ownerOf(tokenId);
         require(
@@ -86,12 +86,12 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         );
         require(startingPrice > 0, "Starting price too small");
         require(
-            paymentToken == WETH,
+            paymentToken == weth,
             "Payment token is not WETH"
         );
         require(
             startTime >= uint32(block.timestamp) || startTime == 0,
-            "Start time must be >= block timestamp"
+            "Start time < block timestamp"
         );
         require(duration > 0, "Duration too small");
         require(timeBuffer < duration, "Time buffer too large");
@@ -105,6 +105,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
 
         item.seller = payable(msg.sender);
         item.startingPrice = startingPrice;
+        item.highestBid.amount = startingPrice;
         item.highestBid.paymentToken = paymentToken;
         item.startTime = startTime;
         item.duration = duration;

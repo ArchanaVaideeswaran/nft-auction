@@ -78,7 +78,7 @@ describe("English Auction", () => {
                 timeBuffer,
                 ticSize
             )).to.be.rejectedWith(
-                "Token contract does not support interface IERC721"
+                "IERC721 not supported"
             );
 
             await expect(auction.createAuction(
@@ -130,7 +130,7 @@ describe("English Auction", () => {
                 timeBuffer,
                 ticSize
             )).to.be.rejectedWith(
-                "Start time must be >= block timestamp"
+                "Start time < block timestamp"
             );
 
             await expect(auction.createAuction(
@@ -199,6 +199,57 @@ describe("English Auction", () => {
                 [owner, auction],
                 [-1, 1]
             );
+        });
+    });
+
+    describe("Function bid", () => {
+        // function parameters
+        let token;
+        let tokenId;
+        let amount;
+        it("should validate input parameters for placing bid", async () => {
+            token = nft.address;
+            tokenId = 1;
+            amount = toWei("7");
+
+            await expect(auction.bid(
+                token,
+                2, // passing tokenId that is not on auction
+                amount
+            )).to.be.rejectedWith("Auction item does not exists");
+
+             // caller is the seller
+            await expect(auction.bid(
+                token,
+                tokenId,
+                amount
+            )).to.be.rejectedWith("Caller cannot be seller");
+
+            // trying to bid before auction starts
+            await expect(auction.connect(user1).bid(
+                token,
+                tokenId,
+                amount
+            )).to.be.rejectedWith("Auction not started");
+
+            let increase = (await time.latest()) + FIVE_MINS_IN_SECONDS;
+            await time.increaseTo(increase);
+
+            await expect(auction.connect(user1).bid(
+                token,
+                tokenId,
+                toWei("5.5") // minimum tic size set in 1 ether
+            )).to.be.rejectedWith("Minimum tic size not met");
+
+            increase = (await time.latest()) + MIN_AUCTION_LENGTH_IN_SECONDS;
+            await time.increaseTo(increase);
+
+            // placing bid after auction ends
+            await expect(auction.connect(user1).bid(
+                token,
+                tokenId,
+                amount
+            )).to.be.rejectedWith("Auction ended");
         });
     });
 });

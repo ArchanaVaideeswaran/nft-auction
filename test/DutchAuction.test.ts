@@ -77,7 +77,7 @@ describe("Dutch Auction", () => {
                 duration,
                 paymentToken
             )).to.be.rejectedWith(
-                "Token contract does not support interface IERC721"
+                "IERC721 not supported"
             );
 
              // "owner" is the owner of token ID 1 connecting "user1" throws error
@@ -138,7 +138,7 @@ describe("Dutch Auction", () => {
                 duration,
                 paymentToken
             )).to.be.rejectedWith(
-                "Start time must be >= block timestamp"
+                "Start time < block timestamp"
             );
 
             await expect(auction.createAuction(
@@ -150,7 +150,7 @@ describe("Dutch Auction", () => {
                 0, // duration should be greater than minimum auction duration
                 paymentToken
             )).to.be.rejectedWith(
-                "Duration must be greater than minimum auction duration"
+                "Duration < min auction duration"
             );
 
             await expect(auction.createAuction(
@@ -340,7 +340,7 @@ describe("Dutch Auction", () => {
             minDuration = MIN_AUCTION_LENGTH_IN_SECONDS - FIVE_MINS_IN_SECONDS;
             await expect(
                 auction.setMinimumAuctionLength(minDuration)
-            ).to.be.rejectedWith("Auction length must be > 15 minutes");
+            ).to.be.rejectedWith("Auction length < 15 minutes");
         });
 
         it("should set new min duration",async () => {

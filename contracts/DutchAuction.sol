@@ -18,9 +18,9 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         address paymentToken;
     }
 
-    uint public _minimumAuctionLengthInSeconds;
+    uint public minimumAuctionLengthInSeconds;
     address public owner;
-    address public WETH;
+    address public weth;
     mapping(address => mapping(uint => Listing)) private _listings;
 
     event AuctionCreated(
@@ -42,10 +42,10 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
     );
     event UpdatedMinAuctionLength(uint lengthInSeconds);
 
-    constructor(address weth, uint minimumAuctionLengthInSeconds) {
+    constructor(address _weth, uint _minimumAuctionLengthInSeconds) {
         owner = msg.sender;
-        WETH = weth;
-        setMinimumAuctionLength(minimumAuctionLengthInSeconds);
+        weth = _weth;
+        setMinimumAuctionLength(_minimumAuctionLengthInSeconds);
     }
 
     function createAuction(
@@ -59,7 +59,7 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
     ) external nonReentrant {
         require(
             IERC165(nft).supportsInterface(type(IERC721).interfaceId),
-            "Token contract does not support interface IERC721"
+            "IERC721 not supported"
         );
         address tokenOwner = IERC721(nft).ownerOf(tokenId);
         require(
@@ -70,16 +70,16 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         require(startPrice > 0, "Starting price too small");
         require(endPrice < startPrice, "End price must be < start price");
         require(
-            paymentToken == WETH,
+            paymentToken == weth,
             "Payment token is not WETH"
         );
         require(
             startTime >= uint32(block.timestamp),
-            "Start time must be >= block timestamp"
+            "Start time < block timestamp"
         );
         require(
-            duration >= _minimumAuctionLengthInSeconds,
-            "Duration must be greater than minimum auction duration"
+            duration >= minimumAuctionLengthInSeconds,
+            "Duration < min auction duration"
         );
 
         Listing storage item = _listings[nft][tokenId];
@@ -131,13 +131,13 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         emit AuctionCancelled(nft, tokenId, item.seller);
     }
 
-    function setMinimumAuctionLength(uint minimumAuctionLengthInSeconds) public {
+    function setMinimumAuctionLength(uint _minimumAuctionLengthInSeconds) public {
         require(msg.sender == owner, "Caller not owner");
         require(
-            minimumAuctionLengthInSeconds >= 15 minutes,
-            "Auction length must be > 15 minutes"
+            _minimumAuctionLengthInSeconds >= 15 minutes,
+            "Auction length < 15 minutes"
         );
-        _minimumAuctionLengthInSeconds = minimumAuctionLengthInSeconds;
+        minimumAuctionLengthInSeconds = _minimumAuctionLengthInSeconds;
         
         emit UpdatedMinAuctionLength(minimumAuctionLengthInSeconds);
     }
