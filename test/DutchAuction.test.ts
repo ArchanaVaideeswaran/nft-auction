@@ -42,6 +42,7 @@ describe("Dutch Auction", () => {
 
         await nft.mint(owner.address);
         await nft.mint(user1.address);
+        await nft.mint(user1.address);
 
         let Dummy = await ethers.getContractFactory("Dummy");
         dummy = await Dummy.deploy();
@@ -58,7 +59,7 @@ describe("Dutch Auction", () => {
         let duration;
         let paymentToken;
 
-        it("should validate input params",async () => {
+        it("should validate input params for creating auction",async () => {
             token = nft.address;
             tokenId = 1;
             startPrice = toWei("10");
@@ -175,8 +176,8 @@ describe("Dutch Auction", () => {
             duration = (MIN_AUCTION_LENGTH_IN_SECONDS * 2);
             paymentToken = weth.address;
 
-            await nft.approve(auction.address, 1);
-
+            // listing tokenId 1 on auction owned by owner
+            await nft.approve(auction.address, tokenId);
             await expect(auction.createAuction(
                 token,
                 tokenId,
@@ -186,6 +187,20 @@ describe("Dutch Auction", () => {
                 duration,
                 paymentToken
             )).to.changeTokenBalances(nft, [owner, auction], [-1, 1]);
+
+            // listing tokenId 2 on auction owned by user1
+            tokenId = 2;
+            startTime += duration;
+            await nft.connect(user1).approve(auction.address, tokenId);
+            await expect(auction.connect(user1).createAuction(
+                token,
+                tokenId,
+                startPrice,
+                endPrice,
+                startTime,
+                duration,
+                paymentToken
+            )).to.changeTokenBalances(nft, [user1, auction], [-1, 1]);
         });
     });
 
@@ -195,8 +210,9 @@ describe("Dutch Auction", () => {
         let tokenId;
         let amount;
         let startTime;
+        let duration;
 
-        it("should validate input params",async () => {
+        it("should validate input params for placing bids",async () => {
             token = nft.address;
             tokenId = 1;
             amount = toWei("2");
@@ -205,7 +221,7 @@ describe("Dutch Auction", () => {
 
             await expect(auction.buyAuctionItem(
                 token,
-                2, // token Id 2 is not on auction
+                3, // token Id 3 is not on auction
                 amount
             )).to.be.rejectedWith(
                 "Auction item does not exist"
@@ -244,7 +260,8 @@ describe("Dutch Auction", () => {
                 "Cannot execute bid"
             );
 
-            increase += MIN_AUCTION_LENGTH_IN_SECONDS;
+            duration = (await auction.getListing(token, tokenId)).duration;
+            increase += duration;
             await time.increaseTo(increase);
 
             // auction ended at the given time
@@ -259,24 +276,24 @@ describe("Dutch Auction", () => {
 
         it("should buy auction item on valid input", async () => {
             token = nft.address;
-            tokenId = 1;
-            amount = toWei("8");
+            tokenId = 2;
+            amount = await auction.getCurrentPrice(token, tokenId);
 
             startTime = (await auction.getListing(token, tokenId)).startTime;
-            let increase = (
-                (await time.latest())
-                + FIVE_MINS_IN_SECONDS
-            );
-            await time.increaseTo(increase);
+            let currentTime = await time.latest();
+            if(currentTime < startTime){
+                let increase = startTime + FIVE_MINS_IN_SECONDS;
+                await time.increaseTo(increase);
+            }
+            
+            await weth.connect(user2).deposit({value: amount});
+            await weth.connect(user2).approve(auction.address, amount);
 
-            await weth.connect(user1).deposit({value: amount});
-            await weth.connect(user1).approve(auction.address, amount);
-
-            await expect(auction.connect(user1).buyAuctionItem(
+            await expect(auction.connect(user2).buyAuctionItem(
                 token,
                 tokenId,
                 amount
-            )).to.changeTokenBalances(nft, [auction, user1], [-1, 1]);
+            )).to.changeTokenBalances(nft, [auction, user2], [-1, 1]);
         });
     });
 
@@ -285,9 +302,9 @@ describe("Dutch Auction", () => {
         let token;
         let tokenId;
 
-        it("should validate input parameters",async () => {
+        it("should validate input parameters for cancelling auction",async () => {
             token = nft.address;
-            tokenId = 2;
+            tokenId = 3;
 
             await expect(auction.connect(user1).cancelAuction(
                 token,
@@ -320,7 +337,7 @@ describe("Dutch Auction", () => {
 
         it("should cancel auction on valid input",async () => {
             token = nft.address;
-            tokenId = 2;
+            tokenId = 3;
 
             expect((await auction.getListing(
                 token,
@@ -349,7 +366,7 @@ describe("Dutch Auction", () => {
             await auction.setMinimumAuctionLength(minDuration);
 
             expect(
-                await auction._minimumAuctionLengthInSeconds()
+                await auction.minimumAuctionLengthInSeconds()
             ).equal(minDuration);
         })
     });
