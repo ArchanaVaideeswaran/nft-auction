@@ -6,8 +6,6 @@ async function main() {
     const [ owner ] = await ethers.getSigners();
     console.log(owner.address);
 
-    const MIN_AUCTION_LENGTH_IN_SECONDS = 15 * 60;
-
     // const Weth = await ethers.getContractFactory("WETH");
     // const weth = await Weth.deploy();
     // await weth.deployed();
@@ -15,15 +13,14 @@ async function main() {
     const weth = "";
     console.log("WETH: ", weth);
 
-    const Auction = await ethers.getContractFactory("DutchAuction");
+    const Auction = await ethers.getContractFactory("EnglishAuction");
     const auction = await Auction.deploy(
         weth,
-        MIN_AUCTION_LENGTH_IN_SECONDS
     );
     await auction.deployed();
-    console.log("Dutch Auction: ", auction.address);
+    console.log("English Auction: ", auction.address);
 
-    storeContract(auction, "DutchAuction");
+    storeContract(auction, "EnglishAuction");
 }
 
 function storeContract(contract: Contract, name: string) {
