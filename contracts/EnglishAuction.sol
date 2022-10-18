@@ -2,13 +2,13 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interfaces/IWETH.sol";
 
 contract EnglishAuction is ERC721Holder, ReentrancyGuard {
+    
     struct Listing {
         address payable seller;
         uint startingPrice;
@@ -25,6 +25,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         address paymentToken;
     }
 
+    address public weth;
     mapping(address => mapping(uint => Listing)) private _listings;
     mapping(address => mapping(uint => mapping(address => Bid))) private _bids;
 
@@ -59,6 +60,10 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         address indexed seller
     );
 
+    constructor(address _weth) {
+        weth = _weth;
+    }
+
     function createAuction(
         address nft,
         uint tokenId,
@@ -71,7 +76,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
     ) external nonReentrant {
         require(
             IERC165(nft).supportsInterface(type(IERC721).interfaceId),
-            "Token contract does not support interface IERC721"
+            "IERC721 not supported"
         );
         address owner = IERC721(nft).ownerOf(tokenId);
         require(
@@ -81,13 +86,12 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         );
         require(startingPrice > 0, "Starting price too small");
         require(
-            paymentToken == address(0) ||
-            IERC165(paymentToken).supportsInterface(type(IERC20).interfaceId),
-            "Payment token is neither zero (ETH) nor supports interface IERC20"
+            paymentToken == weth,
+            "Payment token is not WETH"
         );
         require(
             startTime >= uint32(block.timestamp) || startTime == 0,
-            "Start time must be >= block timestamp"
+            "Start time < block timestamp"
         );
         require(duration > 0, "Duration too small");
         require(timeBuffer < duration, "Time buffer too large");
@@ -101,17 +105,14 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
 
         item.seller = payable(msg.sender);
         item.startingPrice = startingPrice;
+        item.highestBid.amount = startingPrice;
         item.highestBid.paymentToken = paymentToken;
         item.startTime = startTime;
         item.duration = duration;
         item.timeBuffer = timeBuffer;
         item.ticSize = ticSize;
 
-        IERC721(nft).safeTransferFrom(
-            msg.sender,
-            address(this),
-            tokenId
-        );
+        _handleNftTransfer(nft, tokenId, msg.sender, address(this));
 
         emit AuctionCreated(nft, tokenId, msg.sender);
     }
@@ -121,10 +122,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         uint32 blockTimeStamp = uint32(block.timestamp);
 
         require(item.seller != address(0), "Auction item does not exists");
-        require(
-            amount >= (item.highestBid.amount + item.ticSize),
-            "Minimum tic size not met"
-        );
+        require(msg.sender != item.seller, "Caller cannot be seller");
         require(
             item.startTime <= blockTimeStamp,
             "Auction not started"
@@ -134,15 +132,15 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
             "Auction ended"
         );
         require(
-            item.highestBid.paymentToken != address(0),
-            "Payment token is not ERC20"
+            amount >= (item.highestBid.amount + item.ticSize),
+            "Minimum tic size not met"
         );
 
         Bid storage _bid = _bids[nft][tokenId][msg.sender];
 
         if(_bid.bidder == address(0)) {
             _bid.bidder = payable(msg.sender);
-            _bid.amount += amount;
+            _bid.amount = amount;
             _bid.paymentToken = item.highestBid.paymentToken;
         } else {
             _bid.amount += amount;
@@ -158,57 +156,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
             extended = true;
         }
 
-        IERC20(_bid.paymentToken).transferFrom(
-            msg.sender,
-            address(this),
-            amount
-        );
-
-        emit BidPlaced(nft, tokenId, _bid.bidder, amount, extended);
-    }
-
-    function bidEth(address nft, uint tokenId) external payable nonReentrant {
-        uint amount = msg.value;
-        Listing storage item = _listings[nft][tokenId];
-        uint32 blockTimeStamp = uint32(block.timestamp);
-
-        require(item.seller != address(0), "Auction item does not exists");
-        require(
-            amount >= (item.highestBid.amount + item.ticSize),
-            "Minimum tic size not met"
-        );
-        require(
-            item.startTime <= blockTimeStamp,
-            "Auction not started"
-        );
-        require(
-            blockTimeStamp < (item.startTime + item.duration),
-            "Auction ended"
-        );
-        require(
-            item.highestBid.paymentToken == address(0),
-            "Payment token is not ETH"
-        );
-
-        Bid storage _bid = _bids[nft][tokenId][msg.sender];
-
-        if(_bid.bidder == address(0)) {
-            _bid.bidder = payable(msg.sender);
-            _bid.amount += amount;
-            _bid.paymentToken = item.highestBid.paymentToken;
-        } else {
-            _bid.amount += amount;
-        }
-
-        item.highestBid = _bid;
-
-        bool extended;
-        uint32 timeRemaining = blockTimeStamp - item.startTime;
-
-        if(timeRemaining <= item.timeBuffer) {
-            item.duration += (item.timeBuffer - timeRemaining);
-            extended = true;
-        }
+        _handlePayment(_bid.paymentToken, msg.sender, address(this), amount);
 
         emit BidPlaced(nft, tokenId, _bid.bidder, amount, extended);
     }
@@ -228,22 +176,9 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         delete _listings[nft][tokenId];
         delete _bids[nft][tokenId][msg.sender];
 
-        IERC721(nft).safeTransferFrom(
-            address(this),
-            item.highestBid.bidder,
-            tokenId
-        );
+        _handlePayment(_bid.paymentToken, address(this), item.seller, _bid.amount);
 
-        if(_bid.paymentToken != address(0)) {
-            IERC20(_bid.paymentToken).transferFrom(
-                address(this),
-                item.seller,
-                _bid.amount
-            );
-        } else {
-            (bool succes, ) = payable(item.seller).call{value: _bid.amount}("");
-            require(succes, "ETH transfer failed");
-        }
+        _handleNftTransfer(nft, tokenId, address(this), item.highestBid.bidder);
 
         emit AuctionSettled(nft, tokenId, item.seller, _bid.bidder, _bid.amount);
     }
@@ -257,11 +192,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
 
         delete _listings[nft][tokenId];
 
-        IERC721(nft).safeTransferFrom(
-            address(this),
-            item.seller,
-            tokenId
-        );
+        _handleNftTransfer(nft, tokenId, address(this), item.seller);
 
         emit AuctionCancelled(nft, tokenId, item.seller);
     } 
@@ -278,16 +209,7 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
 
         delete _bids[nft][tokenId][msg.sender];
 
-        if(_bid.paymentToken != address(0)) {
-            IERC20(_bid.paymentToken).transferFrom(
-                address(this),
-                _bid.bidder,
-                _bid.amount
-            );
-        } else {
-            (bool succes, ) = payable(_bid.bidder).call{value: _bid.amount}("");
-            require(succes, "ETH transfer failed");
-        }
+        _handlePayment(_bid.paymentToken, address(this), _bid.bidder, _bid.amount);
 
         emit BidClaimed(nft, tokenId, _bid.bidder, _bid.amount);
     }
@@ -305,5 +227,23 @@ contract EnglishAuction is ERC721Holder, ReentrancyGuard {
         address bidder
     ) public view returns (Bid memory) {
         return _bids[nft][tokenId][bidder];
+    }
+
+    function _handlePayment(
+        address token,
+        address from,
+        address to,
+        uint amount
+    ) internal {
+        IWETH(token).transferFrom(from, to, amount);
+    }
+
+    function _handleNftTransfer(
+        address token,
+        uint tokenId,
+        address from,
+        address to
+    ) internal {
+        IERC721(token).safeTransferFrom(from, to, tokenId);
     }
 }

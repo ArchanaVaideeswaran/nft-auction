@@ -2,15 +2,15 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interfaces/IWETH.sol";
 
 contract DutchAuction is ERC721Holder, ReentrancyGuard {
+
     struct Listing {
-        address payable seller;
+        address seller;
         uint startPrice;
         uint endPrice;
         uint32 startTime;
@@ -18,6 +18,9 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         address paymentToken;
     }
 
+    uint public minimumAuctionLengthInSeconds;
+    address public owner;
+    address public weth;
     mapping(address => mapping(uint => Listing)) private _listings;
 
     event AuctionCreated(
@@ -25,13 +28,25 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         uint tokenId,
         address indexed seller
     );
-    event AuctionSold(
+    event AuctionItemSold(
         address indexed nft,
         uint tokenId,
         address indexed seller,
         address indexed buyer,
         uint amount
     );
+    event AuctionCancelled(
+        address indexed nft,
+        uint tokenId,
+        address indexed seller
+    );
+    event UpdatedMinAuctionLength(uint lengthInSeconds);
+
+    constructor(address _weth, uint _minimumAuctionLengthInSeconds) {
+        owner = msg.sender;
+        weth = _weth;
+        setMinimumAuctionLength(_minimumAuctionLengthInSeconds);
+    }
 
     function createAuction(
         address nft,
@@ -44,41 +59,39 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
     ) external nonReentrant {
         require(
             IERC165(nft).supportsInterface(type(IERC721).interfaceId),
-            "Token contract does not support interface IERC721"
+            "IERC721 not supported"
         );
-        address owner = IERC721(nft).ownerOf(tokenId);
+        address tokenOwner = IERC721(nft).ownerOf(tokenId);
         require(
-            msg.sender == owner || 
-            IERC721(nft).isApprovedForAll(owner, msg.sender),
+            msg.sender == tokenOwner || 
+            IERC721(nft).isApprovedForAll(tokenOwner, msg.sender),
             "Caller is not owner or operator"
         );
         require(startPrice > 0, "Starting price too small");
         require(endPrice < startPrice, "End price must be < start price");
         require(
-            paymentToken == address(0) ||
-            IERC165(paymentToken).supportsInterface(type(IERC20).interfaceId),
-            "Payment token is neither zero (ETH) nor supports interface IERC20"
+            paymentToken == weth,
+            "Payment token is not WETH"
         );
         require(
-            startTime >= uint32(block.timestamp) || startTime == 0,
-            "Start time must be >= block timestamp"
+            startTime >= uint32(block.timestamp),
+            "Start time < block timestamp"
         );
-        require(duration >= 15 minutes, "Auction duration must be >= 15 mins");
+        require(
+            duration >= minimumAuctionLengthInSeconds,
+            "Duration < min auction duration"
+        );
 
         Listing storage item = _listings[nft][tokenId];
 
-        item.seller = payable(msg.sender);
+        item.seller = msg.sender;
         item.startPrice = startPrice;
         item.endPrice = endPrice;
         item.startTime = startTime;
         item.duration = duration;
         item.paymentToken = paymentToken;
 
-        IERC721(nft).safeTransferFrom(
-            msg.sender,
-            address(this),
-            tokenId
-        );
+        _handleNftTransfer(nft, tokenId, msg.sender, address(this));
 
         emit AuctionCreated(nft, tokenId, msg.sender);
     }
@@ -91,92 +104,42 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         Listing memory item = getListing(nft, tokenId);
 
         require(item.seller != address(0), "Auction item does not exist");
-        require(uint32(block.timestamp) >= item.startTime, "Auction not started");
-        require(
-            uint32(block.timestamp) < (item.startTime + item.duration),
-            "Auction ended"
-        );
-        require(
-            item.paymentToken != address(0),
-            "Payment token is not ERC20"
-        );
+        require(msg.sender != item.seller, "Caller cannot be seller");
 
-        uint elapsedTime = uint(uint32(block.timestamp) - item.startTime);
-        uint currentPrice = getCurrentPrice(
-            elapsedTime,
-            item.duration,
-            item.startPrice,
-            item.endPrice
-        );
-
-        require(amount >= currentPrice, "Price too small");
+        uint currentAuctionPrice = getCurrentPrice(nft, tokenId);        
+        require(amount >= currentAuctionPrice, "Cannot execute bid");
 
         delete _listings[nft][tokenId];
 
-        IERC721(nft).safeTransferFrom(
-            address(this),
-            msg.sender,
-            tokenId
-        );
+        _handlePayment(item.paymentToken, msg.sender, item.seller, amount);
+        
+        _handleNftTransfer(nft, tokenId, address(this), msg.sender);
 
-        IERC20(item.paymentToken).transferFrom(
-            msg.sender,
-            item.seller,
-            amount
-        );
-
-        emit AuctionSold(nft, tokenId, item.seller, msg.sender, amount);
+        emit AuctionItemSold(nft, tokenId, item.seller, msg.sender, amount);
     }
 
-    function buyAuctionItemEth(
-        address nft,
-        uint tokenId
-    ) external payable nonReentrant {
+    function cancelAuction(address nft, uint tokenId) external nonReentrant {
         Listing memory item = getListing(nft, tokenId);
-        uint amount = msg.value;
 
-        require(item.seller != address(0), "Auction item does not exist");
-        require(uint32(block.timestamp) >= item.startTime, "Auction not started");
-        require(
-            uint32(block.timestamp) < (item.startTime + item.duration),
-            "Auction ended"
-        );
-        require(
-            item.paymentToken == address(0),
-            "Payment token is not ETH"
-        );
-
-        uint elapsedTime = uint(uint32(block.timestamp) - item.startTime);
-        uint currentPrice = getCurrentPrice(
-            elapsedTime,
-            item.duration,
-            item.startPrice,
-            item.endPrice
-        );
-
-        require(amount >= currentPrice, "Price too small");
+        require(item.seller != address(0), "Auction item does not exists");
+        require(item.seller == msg.sender, "Caller is not seller");
 
         delete _listings[nft][tokenId];
 
-        IERC721(nft).safeTransferFrom(
-            address(this),
-            msg.sender,
-            tokenId
-        );
+        _handleNftTransfer(nft, tokenId, address(this), item.seller);
 
-        (bool succes, ) = payable(item.seller).call{value: amount}("");
-        require(succes, "ETH transfer failed");
-
-        emit AuctionSold(nft, tokenId, item.seller, msg.sender, amount);
+        emit AuctionCancelled(nft, tokenId, item.seller);
     }
 
-    function getCurrentPrice(
-        uint elapsedTime,
-        uint duration,
-        uint startPrice,
-        uint endPrice
-    ) public pure returns (uint currentPrice) {
-        currentPrice = ((startPrice - endPrice) * (elapsedTime)) / duration;
+    function setMinimumAuctionLength(uint _minimumAuctionLengthInSeconds) public {
+        require(msg.sender == owner, "Caller not owner");
+        require(
+            _minimumAuctionLengthInSeconds >= 15 minutes,
+            "Auction length < 15 minutes"
+        );
+        minimumAuctionLengthInSeconds = _minimumAuctionLengthInSeconds;
+        
+        emit UpdatedMinAuctionLength(minimumAuctionLengthInSeconds);
     }
 
     function getListing(
@@ -184,5 +147,45 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
         uint tokenId
     ) public view returns (Listing memory) {
         return _listings[nft][tokenId];
+    }
+
+    function getCurrentPrice(
+        address nft,
+        uint tokenId
+    ) public view returns (uint) {
+        Listing memory item = getListing(nft, tokenId);
+
+        uint startTime = item.startTime;
+        uint endTime = uint(item.startTime + item.duration);
+        uint blockTimestamp = block.timestamp;
+
+        require(startTime <= blockTimestamp, "Auction not started");
+        require(endTime >= blockTimestamp, "Auction ended");
+
+        uint currentAuctionPrice = item.startPrice - (
+            ((item.startPrice - item.endPrice) * (blockTimestamp - startTime)) 
+            / 
+            (endTime - startTime)
+        );
+
+        return currentAuctionPrice;
+    }
+
+    function _handlePayment(
+        address token,
+        address from,
+        address to,
+        uint amount
+    ) internal {
+        IWETH(token).transferFrom(from, to, amount);
+    }
+
+    function _handleNftTransfer(
+        address token,
+        uint tokenId,
+        address from,
+        address to
+    ) internal {
+        IERC721(token).safeTransferFrom(from, to, tokenId);
     }
 }
