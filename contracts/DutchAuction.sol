@@ -74,13 +74,17 @@ contract DutchAuction is ERC721Holder, ReentrancyGuard {
             "Payment token is not WETH"
         );
         require(
-            startTime >= uint32(block.timestamp),
+            startTime >= uint32(block.timestamp) || startTime == 0,
             "Start time < block timestamp"
         );
         require(
             duration >= minimumAuctionLengthInSeconds,
             "Duration < min auction duration"
         );
+
+        if(startTime == 0) {
+            startTime = uint32(block.timestamp);
+        }
 
         Listing storage item = _listings[nft][tokenId];
 
