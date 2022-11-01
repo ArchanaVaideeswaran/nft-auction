@@ -10,9 +10,9 @@ async function main() {
     const nft = await Nft.deploy();
     await nft.deployed();
 
-    await nft.mint(owner.address);
-    await nft.mint(user1.address);
-    await nft.mint(user2.address);
+    // await nft.mint(owner.address);
+    // await nft.mint(user1.address);
+    // await nft.mint(user2.address);
     console.log("Avengers NFT: ", nft.address);
 
     storeContract(nft, "AvengersNFT");

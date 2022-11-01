@@ -25,6 +25,14 @@ async function main() {
     console.log("Dutch Auction: ", auction.address);
 
     storeContract(auction, "DutchAuction");
+
+    const Nft = await ethers.getContractFactory("Avengers");
+    const nft = await Nft.deploy();
+    await nft.deployed();
+
+    console.log("Avengers NFT: ", nft.address);
+
+    storeContract(nft, "AvengersNFT");
 }
 
 function storeContract(contract: Contract, name: string) {
