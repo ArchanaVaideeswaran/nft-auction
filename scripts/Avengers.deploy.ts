@@ -3,33 +3,16 @@ import { ethers } from "hardhat";
 import * as fs from "fs";
 
 async function main() {
-    const [ owner ] = await ethers.getSigners();
-    console.log(owner.address);
-
-    const MIN_AUCTION_LENGTH_IN_SECONDS = 15 * 60;
-
-    const Weth = await ethers.getContractFactory("WETH");
-    const weth = await Weth.deploy();
-    await weth.deployed();
-    storeContract(weth, "WETH");
-
-    // const weth = "";
-    console.log("WETH: ", weth.address);
-
-    const Auction = await ethers.getContractFactory("DutchAuction");
-    const auction = await Auction.deploy(
-        weth.address,
-        MIN_AUCTION_LENGTH_IN_SECONDS
-    );
-    await auction.deployed();
-    console.log("Dutch Auction: ", auction.address);
-
-    storeContract(auction, "DutchAuction");
+    const [ owner, user1, user2 ] = await ethers.getSigners();
+    // console.log(owner.address);
 
     const Nft = await ethers.getContractFactory("Avengers");
     const nft = await Nft.deploy();
     await nft.deployed();
 
+    // await nft.mint(owner.address);
+    // await nft.mint(user1.address);
+    // await nft.mint(user2.address);
     console.log("Avengers NFT: ", nft.address);
 
     storeContract(nft, "AvengersNFT");
