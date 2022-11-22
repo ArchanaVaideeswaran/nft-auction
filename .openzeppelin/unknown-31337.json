@@ -1,0 +1,384 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+    "txHash": "0x8c88a5d52648b0d1f688430d802f8e10bcd384503730c44187be91153bbb1e8e"
+  },
+  "proxies": [
+    {
+      "address": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+      "txHash": "0xd0100f8b2acb4c8c5c65af5869418da17b4ef949048e665fc8c9671280c0ba8c",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "8bc7c6e3cb6a139c54802c3b41a61201f013b4511cd1ef3da351a24426595895": {
+      "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      "txHash": "0xd0542b3a370e2d85b8f87fd8fc5a08d669f1e349b833d7c0b0b2a3f8911adc1f",
+      "layout": {
+        "solcVersion": "0.8.17",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC721HolderUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC721\\utils\\ERC721HolderUpgradeable.sol:40"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:80"
+          },
+          {
+            "label": "owner",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_address",
+            "contract": "DutchAuctionV1",
+            "src": "contracts\\upgradeable\\DutchAuctionV1.sol:25"
+          },
+          {
+            "label": "weth",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_address",
+            "contract": "DutchAuctionV1",
+            "src": "contracts\\upgradeable\\DutchAuctionV1.sol:26"
+          },
+          {
+            "label": "minimumAuctionLengthInSeconds",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_uint256",
+            "contract": "DutchAuctionV1",
+            "src": "contracts\\upgradeable\\DutchAuctionV1.sol:27"
+          },
+          {
+            "label": "_listings",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)4236_storage))",
+            "contract": "DutchAuctionV1",
+            "src": "contracts\\upgradeable\\DutchAuctionV1.sol:28"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)4236_storage))": {
+            "label": "mapping(address => mapping(uint256 => struct DutchAuctionV1.Listing))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Listing)4236_storage)": {
+            "label": "mapping(uint256 => struct DutchAuctionV1.Listing)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Listing)4236_storage": {
+            "label": "struct DutchAuctionV1.Listing",
+            "members": [
+              {
+                "label": "seller",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "paymentToken",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "startTime",
+                "type": "t_uint32",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "duration",
+                "type": "t_uint32",
+                "offset": 24,
+                "slot": "1"
+              },
+              {
+                "label": "startPrice",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "endPrice",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "6d6bcceb0724b074ac976280628072eef5c8388d188ccb0ed76380793a7791a1": {
+      "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "txHash": "0xea2add2425f3c23f8e96aba037c5de96376fc703ea0a475e6f6606311456c21c",
+      "layout": {
+        "solcVersion": "0.8.17",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC721HolderUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\token\\ERC721\\utils\\ERC721HolderUpgradeable.sol:40"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:80"
+          },
+          {
+            "label": "owner",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_address",
+            "contract": "DutchAuctionV2",
+            "src": "contracts\\upgradeable\\DutchAuctionV2.sol:31"
+          },
+          {
+            "label": "weth",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_address",
+            "contract": "DutchAuctionV2",
+            "src": "contracts\\upgradeable\\DutchAuctionV2.sol:32"
+          },
+          {
+            "label": "minimumAuctionLengthInSeconds",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_uint256",
+            "contract": "DutchAuctionV2",
+            "src": "contracts\\upgradeable\\DutchAuctionV2.sol:33"
+          },
+          {
+            "label": "_listings",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)4836_storage))",
+            "contract": "DutchAuctionV2",
+            "src": "contracts\\upgradeable\\DutchAuctionV2.sol:34"
+          },
+          {
+            "label": "_bids",
+            "offset": 0,
+            "slot": "105",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)4843_storage)))",
+            "contract": "DutchAuctionV2",
+            "src": "contracts\\upgradeable\\DutchAuctionV2.sol:35"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)4843_storage)))": {
+            "label": "mapping(address => mapping(uint256 => mapping(address => struct DutchAuctionV2.Bid)))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)4836_storage))": {
+            "label": "mapping(address => mapping(uint256 => struct DutchAuctionV2.Listing))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Bid)4843_storage)": {
+            "label": "mapping(address => struct DutchAuctionV2.Bid)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)4843_storage))": {
+            "label": "mapping(uint256 => mapping(address => struct DutchAuctionV2.Bid))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(Listing)4836_storage)": {
+            "label": "mapping(uint256 => struct DutchAuctionV2.Listing)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Bid)4843_storage": {
+            "label": "struct DutchAuctionV2.Bid",
+            "members": [
+              {
+                "label": "bidder",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "paymentToken",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Listing)4836_storage": {
+            "label": "struct DutchAuctionV2.Listing",
+            "members": [
+              {
+                "label": "seller",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "paymentToken",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "startTime",
+                "type": "t_uint32",
+                "offset": 20,
+                "slot": "1"
+              },
+              {
+                "label": "duration",
+                "type": "t_uint32",
+                "offset": 24,
+                "slot": "1"
+              },
+              {
+                "label": "startPrice",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "endPrice",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    }
+  }
+}
