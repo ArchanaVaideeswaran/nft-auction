@@ -1,43 +1,57 @@
 import { ethers, upgrades } from 'hardhat';
-import { Contract } from "ethers";
 import * as fs from "fs";
+
+let proxy = '';
 
 async function main() {
   const [ owner ] = await ethers.getSigners();
-    console.log(owner.address);
+    console.log('Proxy admin (deployer): ', owner.address);
+    await deploy();
+    // await upgrade();
+}
+async function deploy() {
+  // Deploying
+  console.log('\nDeploying DutchAuctionV1 .....\n');
 
-    const MIN_AUCTION_LENGTH_IN_SECONDS = 15 * 60;
+  const MIN_AUCTION_LENGTH_IN_SECONDS = 15 * 60;
+  const DutchAuctionV1 = await ethers.getContractFactory("DutchAuctionV1");
+  const instance = await upgrades.deployProxy(
+    DutchAuctionV1, 
+    [MIN_AUCTION_LENGTH_IN_SECONDS],
+    {initializer: 'initialize'}
+  );
+  await instance.deployed();
 
-    const Weth = await ethers.getContractFactory("WETH");
-    const weth = await Weth.deploy();
-    await weth.deployed();
-    // storeContract(weth, "WETH");
+  const implementationV1 = await upgrades.erc1967.getImplementationAddress(
+    instance.address
+  );
+  const abiV1 = DutchAuctionV1.interface.format('json');
+  storeProxy(instance.address, abiV1, 'DutchAuctionV1', 'goerli');
 
-    // const weth = "";
-    console.log("WETH: ", weth.address);
+  console.log('DutchAuction Proxy deployed at: ', instance.address);
+  console.log('DutchAuctionV1 implementation address: ', implementationV1);
 
-    // Deploying
-    console.log('Deploying DutchAuctionV1 .....');
-    const DutchAuction = await ethers.getContractFactory("DutchAuctionV1");
-    const instance = await upgrades.deployProxy(
-      DutchAuction, 
-      [weth.address, MIN_AUCTION_LENGTH_IN_SECONDS],
-      {initializer: 'initialize'}
-    );
-    await instance.deployed();
-
-    console.log('DutchAuctionV1 deployed at: ', instance.address);
-
-    // Upgrading
-    console.log('Upgrading DutchAuctionV1 to DutchAuctionV2 .....');
-    const DutchAuctionV2 = await ethers.getContractFactory("DutchAuctionV2");
-    const upgraded = await upgrades.upgradeProxy(instance.address, DutchAuctionV2);
-    await upgraded.deployed();
-
-    console.log('DutchAuctionV2 deployed at: ', upgraded.address);
+  return instance.address;
 }
 
-function storeContract(contract: Contract, name: string) {
+async function upgrade() {
+  // Upgrading
+  console.log('\nUpgrading DutchAuctionV1 to DutchAuctionV2 .....\n');
+  const DutchAuctionV2 = await ethers.getContractFactory("DutchAuctionV2");
+  const upgraded = await upgrades.upgradeProxy(proxy, DutchAuctionV2);
+  await upgraded.deployed();
+
+  const implementationV2 = await upgrades.erc1967.getImplementationAddress(
+    upgraded.address
+  );
+  const abiV2 = DutchAuctionV2.interface.format('json');
+  storeProxy(upgraded.address, abiV2, 'DutchAuctionV2', 'goerli');
+
+  console.log('DutchAuction Proxy deployed at: ', upgraded.address);
+  console.log('DutchAuctionV2 implementation address: ', implementationV2);
+}
+
+function storeProxy(address: string, abi: any, name: string, network?: string) {
   // ----------------- MODIFIED FOR SAVING DEPLOYMENT DATA ----------------- //
 
   /**
@@ -45,20 +59,29 @@ function storeContract(contract: Contract, name: string) {
    * where the ABI, bytecode and the deployed address will be saved inside a JSON file.
    */
 
-  const address = contract.address;
-  const contractAbi = contract.interface.format('json').toString();
-  const abi = JSON.parse(contractAbi);
-
   const output = {
       address,
       abi,
   };
 
-  fs.mkdir('./build', { recursive: true }, (err) => {
+  if(network) {
+    fs.mkdir(`./build/${network}/`, { recursive: true }, (err) => {
       if (err) console.error(err);
-  });
-
-  fs.writeFileSync('./build/' + name + '.json', JSON.stringify(output));
+    });
+    fs.writeFileSync(
+      `./build/${network}/${name}.json`, 
+      JSON.stringify(output)
+    );
+  }
+  else {
+    fs.mkdir(`./build/localhost/`, { recursive: true }, (err) => {
+      if (err) console.error(err);
+    });
+    fs.writeFileSync(
+      `./build/localhost/${name}.json`, 
+      JSON.stringify(output)
+    );
+  }
 
   // ----------------------------------------------------------------------- //
 }

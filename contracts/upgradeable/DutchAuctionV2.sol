@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./interfaces/IWETH.sol";
@@ -28,11 +28,11 @@ contract DutchAuctionV2 is
         uint amount;
     }
 
+    address public constant WETH = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
     address public owner;
-    address public weth;
     uint public minimumAuctionLengthInSeconds;
     mapping(address => mapping(uint => Listing)) private _listings;
-    mapping (address => mapping(uint => mapping(address => Bid))) _bids;
+    mapping (address => mapping(uint => mapping(address => Bid))) private _bids;
 
     event AuctionCreated(
         address indexed nft,
@@ -66,12 +66,10 @@ contract DutchAuctionV2 is
     event UpdatedMinAuctionLength(uint lengthInSeconds);
 
     function initialize(
-        address _weth, 
         uint _minimumAuctionLengthInSeconds
     ) public initializer {
         __ReentrancyGuard_init();
         owner = msg.sender;
-        weth = _weth;
         setMinimumAuctionLength(_minimumAuctionLengthInSeconds);
     }
 
@@ -97,7 +95,7 @@ contract DutchAuctionV2 is
         require(startPrice > 0, "Starting price too small");
         require(endPrice < startPrice, "End price must be < start price");
         require(
-            paymentToken == weth,
+            paymentToken == WETH,
             "Payment token is not WETH"
         );
         require(

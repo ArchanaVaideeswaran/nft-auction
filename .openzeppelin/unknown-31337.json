@@ -2,19 +2,19 @@
   "manifestVersion": "3.2",
   "admin": {
     "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    "txHash": "0x8c88a5d52648b0d1f688430d802f8e10bcd384503730c44187be91153bbb1e8e"
+    "txHash": "0x8bafc81d53c254dabfe9ea221a0703dccab16c081f1f3e3d5deb865b317e7ded"
   },
   "proxies": [
     {
       "address": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-      "txHash": "0xd0100f8b2acb4c8c5c65af5869418da17b4ef949048e665fc8c9671280c0ba8c",
+      "txHash": "0x0f55d0059a7f84f0954e6d5f77c6493b5b678a00eded565a82b69eeeb7e59704",
       "kind": "transparent"
     }
   ],
   "impls": {
     "8bc7c6e3cb6a139c54802c3b41a61201f013b4511cd1ef3da351a24426595895": {
       "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-      "txHash": "0xd0542b3a370e2d85b8f87fd8fc5a08d669f1e349b833d7c0b0b2a3f8911adc1f",
+      "txHash": "0x1fdb765ca4dcb0d4f6f5872ab5b7b68f6e24a3b614d9b9c9a247a3137e69a522",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -176,7 +176,7 @@
     },
     "6d6bcceb0724b074ac976280628072eef5c8388d188ccb0ed76380793a7791a1": {
       "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-      "txHash": "0xea2add2425f3c23f8e96aba037c5de96376fc703ea0a475e6f6606311456c21c",
+      "txHash": "0xdbe000e3e2a848c0428f1587d484d16d9adc20ba5b6276a7d4e7df8e577047dd",
       "layout": {
         "solcVersion": "0.8.17",
         "storage": [
@@ -249,7 +249,7 @@
             "label": "_listings",
             "offset": 0,
             "slot": "104",
-            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)4836_storage))",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)1333_storage))",
             "contract": "DutchAuctionV2",
             "src": "contracts\\upgradeable\\DutchAuctionV2.sol:34"
           },
@@ -257,7 +257,7 @@
             "label": "_bids",
             "offset": 0,
             "slot": "105",
-            "type": "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)4843_storage)))",
+            "type": "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)1340_storage)))",
             "contract": "DutchAuctionV2",
             "src": "contracts\\upgradeable\\DutchAuctionV2.sol:35"
           }
@@ -279,27 +279,27 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)4843_storage)))": {
+          "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)1340_storage)))": {
             "label": "mapping(address => mapping(uint256 => mapping(address => struct DutchAuctionV2.Bid)))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)4836_storage))": {
+          "t_mapping(t_address,t_mapping(t_uint256,t_struct(Listing)1333_storage))": {
             "label": "mapping(address => mapping(uint256 => struct DutchAuctionV2.Listing))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Bid)4843_storage)": {
+          "t_mapping(t_address,t_struct(Bid)1340_storage)": {
             "label": "mapping(address => struct DutchAuctionV2.Bid)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)4843_storage))": {
+          "t_mapping(t_uint256,t_mapping(t_address,t_struct(Bid)1340_storage))": {
             "label": "mapping(uint256 => mapping(address => struct DutchAuctionV2.Bid))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(Listing)4836_storage)": {
+          "t_mapping(t_uint256,t_struct(Listing)1333_storage)": {
             "label": "mapping(uint256 => struct DutchAuctionV2.Listing)",
             "numberOfBytes": "32"
           },
-          "t_struct(Bid)4843_storage": {
+          "t_struct(Bid)1340_storage": {
             "label": "struct DutchAuctionV2.Bid",
             "members": [
               {
@@ -323,7 +323,7 @@
             ],
             "numberOfBytes": "96"
           },
-          "t_struct(Listing)4836_storage": {
+          "t_struct(Listing)1333_storage": {
             "label": "struct DutchAuctionV2.Listing",
             "members": [
               {
